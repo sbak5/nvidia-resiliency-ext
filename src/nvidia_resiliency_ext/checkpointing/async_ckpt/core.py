@@ -411,7 +411,7 @@ class PersistentAsyncCaller(AsyncCaller):
 
     def __init__(
         self,
-        is_daemon: bool = False,
+        is_daemon: bool = True,
         cpu_priority: int = 10,
         io_priority: Optional[int] = None,
     ):
@@ -747,7 +747,7 @@ class AsyncCallsQueue(metaclass=ObjectTracker):
     def __init__(
         self,
         persistent: bool = True,
-        is_daemon: bool = False,
+        is_daemon: bool = True,
         cpu_priority: int = 10,
         io_priority: Optional[int] = None,
     ):
@@ -780,7 +780,7 @@ class AsyncCallsQueue(metaclass=ObjectTracker):
     def warmup_persistent_caller(
         cls,
         rank: int,
-        is_daemon: bool = False,
+        is_daemon: bool = True,
         cpu_priority: int = 10,
         io_priority: Optional[int] = None,
     ):
