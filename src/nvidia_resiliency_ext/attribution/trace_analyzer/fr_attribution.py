@@ -357,6 +357,11 @@ class CollectiveAnalyzer(NVRxAttribution):
         # This helps us detect when we've completely left a PG and come back to it
         pgs_with_active_ranks_last_iter = set()
 
+        # Track PGs that have been fully drained (no rank points to them after their inner loop).
+        # Used to ensure a PG that was fully processed and later re-queued is NOT mistaken for
+        # a still-in-progress PG, so the next encounter correctly triggers a new-window check.
+        pgs_fully_processed = set()
+
         # Result structure: maps (process_group, sub_group, window_index) to list of collectives
         matched_groups = defaultdict(list)
 
@@ -451,7 +456,14 @@ class CollectiveAnalyzer(NVRxAttribution):
                     pg_key = (collective.process_group[0], collective.process_group[1])
                     pgs_with_active_ranks.add(pg_key)
 
-            pgs_with_active_ranks_last_iter = pgs_with_active_ranks
+            # If current_pg was fully drained (no rank still points to it), record it so that
+            # when ranks cycle back to it later the new-window check is not suppressed.
+            if current_pg not in pgs_with_active_ranks:
+                pgs_fully_processed.add(current_pg)
+
+            # Exclude re-queued-but-previously-completed PGs from the "still active" set so
+            # the next encounter of such a PG correctly triggers the overlap/new-window check.
+            pgs_with_active_ranks_last_iter = pgs_with_active_ranks - pgs_fully_processed
 
             # Note: Ranks that have moved to a different PG type "pop up" and wait
             # They'll be processed in the next iteration when we select their PG as the wavefront
@@ -762,16 +774,23 @@ class CollectiveAnalyzer(NVRxAttribution):
                     continue
 
                 # Multiple windows for this PG - try to match across windows
-                all_identified = set()
-                all_missing = set()
                 representative_entry = windows_data[0][3]  # Use first window's entry as template
 
+                # Track the highest window_idx in which each rank was identified
+                identified_up_to: Dict[int, int] = {}
                 for window_idx, identified, missing, entry in windows_data:
-                    all_identified.update(identified)
-                    all_missing.update(missing)
+                    for rank in identified:
+                        identified_up_to[rank] = max(identified_up_to.get(rank, -1), window_idx)
 
-                # Ranks that are identified in at least one window should not be considered missing
-                truly_missing = all_missing - all_identified
+                # A rank is truly missing only if it was never identified in an earlier (or same)
+                # window than the one it was missing in — avoids suppressing real earlier absences
+                truly_missing: set = set()
+                for window_idx, identified, missing, entry in windows_data:
+                    for rank in missing:
+                        if identified_up_to.get(rank, -1) < window_idx:
+                            truly_missing.add(rank)
+
+                all_identified = set(identified_up_to.keys())
 
                 if truly_missing:
                     # Create merged entry with truly missing ranks
@@ -872,8 +891,9 @@ class CollectiveAnalyzer(NVRxAttribution):
                 Find the order index of a given process group type
                 """
                 type_name = key[0]
-                type_val = key[1].split(',')[0]
-                per_pg_seq = (int)(key[1].split(',')[1])
+                last_comma = key[1].rfind(',')
+                type_val = key[1][:last_comma]
+                per_pg_seq = int(key[1][last_comma + 1:])
                 parsed_key = (type_name, type_val, per_pg_seq)
                 logger.debug(
                     f"key: {parsed_key}, self.collectives_to_order: {self.collectives_to_order[parsed_key]}"
