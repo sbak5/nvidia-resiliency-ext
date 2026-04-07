@@ -1,3 +1,16 @@
+---
+name: nvrx-attr-fr-analysis
+description: >
+  Analyze PyTorch NCCL flight-recorder (FR) dumps to identify collective operation hangs and
+  isolate the responsible ranks using CollectiveAnalyzer. Use when a distributed training job
+  hangs due to an NCCL collective timeout and FR dump files are available. Detects the wavefront
+  process group where collectives diverge and returns the root-cause suspect ranks.
+compatibility: Requires PyTorch NCCL FR dumps (TORCH_NCCL_TRACE_BUFFER_SIZE > 0 must be set during training). NVIDIA_API_KEY and langchain-nvidia-ai-endpoints required only when using --llm-analyze.
+metadata:
+  entry-point: CollectiveAnalyzer
+  script: scripts/fr_attribution.py
+---
+
 # Skill: fr_analysis
 
 Analyze PyTorch NCCL flight-recorder (FR) dumps to identify the collective operation hang

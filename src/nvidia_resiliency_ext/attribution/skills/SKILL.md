@@ -1,3 +1,15 @@
+---
+name: nvrx-attr
+description: >
+  Orchestration layer over nvidia_resiliency_ext attribution modules. Provides two sub-skills:
+  log-analysis (analyze SLURM job logs for failure root-cause and restart decisions) and
+  fr-analysis (analyze NCCL flight-recorder dumps to identify collective hangs and isolate
+  responsible ranks). Use when diagnosing why a distributed training job failed.
+compatibility: Requires Python 3.8+, nvidia-resiliency-ext installed, langchain-nvidia-ai-endpoints, and NVIDIA_API_KEY (env var, NVIDIA_API_KEY_FILE, or ~/.nvidia_api_key).
+metadata:
+  author: nvidia
+---
+
 # Attribution Skills
 
 High-level orchestration layer over the `nvidia_resiliency_ext.attribution` modules.

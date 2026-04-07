@@ -1,3 +1,16 @@
+---
+name: nvrx-attr-log-analysis
+description: >
+  Analyze a SLURM job log file for failure root-cause attribution and restart decisions using
+  NVRxLogAnalyzer. Use when you have a SLURM training job log and need to determine why the
+  job failed and whether it should be restarted. Performs per-cycle chunking, fast-path pattern
+  matching, and LLM-based classification.
+compatibility: Requires NVIDIA_API_KEY, langchain-nvidia-ai-endpoints, and logsage packages installed. nvidia-resiliency-ext must be installed.
+metadata:
+  entry-point: NVRxLogAnalyzer
+  script: scripts/nvrx_logsage.py
+---
+
 # Skill: log_analysis
 
 Analyze a SLURM job log file for failure root-cause attribution and restart decisions using `NVRxLogAnalyzer`.
