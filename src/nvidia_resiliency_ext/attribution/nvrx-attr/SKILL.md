@@ -20,8 +20,8 @@ that symlinks to the canonical source under `attribution/`.
 
 | Directory | Purpose | Entry point |
 |-----------|---------|------------|
-| [`log_analysis/`](./log_analysis/SKILL.md) | Analyze SLURM job logs for failure root-cause and restart decisions | `NVRxLogAnalyzer` (`nvrx_logsage.py`) |
-| [`fr_analysis/`](./fr_analysis/SKILL.md) | Analyze NCCL flight-recorder dumps for collective-hang root-cause | `CollectiveAnalyzer` (`fr_attribution.py`) |
+| [`log-analysis/`](./log-analysis/SKILL.md) | Analyze SLURM job logs for failure root-cause and restart decisions | `NVRxLogAnalyzer` (`nvrx_logsage.py`) |
+| [`fr-analysis/`](./fr-analysis/SKILL.md) | Analyze NCCL flight-recorder dumps for collective-hang root-cause | `CollectiveAnalyzer` (`fr_attribution.py`) |
 
 ## How skills relate to the library
 
@@ -31,9 +31,9 @@ attribution/
 ├── trace_analyzer/fr_attribution.py  ← fr_analysis skill source
 ├── analyzer/engine.py                ← Analyzer: coalesces both via RequestCoalescer
 ├── combined_log_fr/                  ← optional LLM fusion of log + FR results
-└── skills/                           ← this directory
-    ├── log_analysis/
-    └── fr_analysis/
+└── nvrx-attr/                        ← this directory
+    ├── log-analysis/
+    └── fr-analysis/
 ```
 
 The `Analyzer` (`analyzer/engine.py`) is the recommended entry point when you need

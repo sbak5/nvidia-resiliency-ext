@@ -1,5 +1,5 @@
 ---
-name: nvrx-attr-fr-analysis
+name: fr-analysis
 description: >
   Analyze PyTorch NCCL flight-recorder (FR) dumps to identify collective operation hangs and
   isolate the responsible ranks using CollectiveAnalyzer. Use when a distributed training job
