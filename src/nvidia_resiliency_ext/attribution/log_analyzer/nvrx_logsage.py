@@ -121,15 +121,15 @@ class NVRxLogAnalyzer(NVRxAttribution):
         logger.debug("API key loaded (length=%d)", len(self.api_key))
         logger.debug(
             "Using model: %s",
-            self._init_config.get("model", "nvdev/nvidia/llama-3.3-nemotron-super-49b-v1"),
+            self._init_config.get("model", "qwen/qwen3.5-122b-a10b"),
         )
         self.lru_cache = LRUCache(100_000)
         self.llm = ChatNVIDIA(
-            model=self._init_config.get("model", "nvdev/nvidia/llama-3.3-nemotron-super-49b-v1"),
+            model=self._init_config.get("model", "qwen/qwen3.5-122b-a10b"),
             api_key=self.api_key,
             temperature=float(self._init_config.get("temperature", 0.2)),
             top_p=float(self._init_config.get("top_p", 0.7)),
-            max_tokens=int(self._init_config.get("max_tokens", 8192)),
+            max_completion_tokens=int(self._init_config.get("max_tokens", 8192)),
         )
         self.exclude_nvrx_logs = bool(self._init_config.get("exclude_nvrx_logs", False))
         self.is_per_cycle = bool(self._init_config.get("is_per_cycle", False))
@@ -336,7 +336,7 @@ def main():
     parser.add_argument(
         '-m',
         '--model',
-        default="nvdev/nvidia/llama-3.3-nemotron-super-49b-v1",
+        default="qwen/qwen3.5-122b-a10b",
         help='Model to use for LLM analysis',
     )
     parser.add_argument('-t', '--temperature', type=float, default=0.2, help='Temperature for LLM')

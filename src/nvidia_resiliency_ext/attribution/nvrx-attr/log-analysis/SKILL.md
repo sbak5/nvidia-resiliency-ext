@@ -45,7 +45,7 @@ python scripts/nvrx_logsage.py \
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--log-path` | required | Path to the job log file |
-| `--model` | `nvdev/nvidia/llama-3.3-nemotron-super-49b-v1` | LLM model |
+| `--model` | `qwen/qwen3.5-122b-a10b` | LLM model |
 | `--temperature` | `0.2` | Sampling temperature |
 | `--top_p` | `0.7` | Top-p nucleus sampling |
 | `--max_tokens` | `8192` | Max output tokens |
@@ -61,7 +61,7 @@ from nvidia_resiliency_ext.attribution.log_analyzer.nvrx_logsage import NVRxLogA
 
 analyzer = NVRxLogAnalyzer({
     "log_path": "/path/to/job.log",
-    "model": "nvdev/nvidia/llama-3.3-nemotron-super-49b-v1",
+    "model": "qwen/qwen3.5-122b-a10b",
     "temperature": 0.2,
     "top_p": 0.7,
     "max_tokens": 8192,

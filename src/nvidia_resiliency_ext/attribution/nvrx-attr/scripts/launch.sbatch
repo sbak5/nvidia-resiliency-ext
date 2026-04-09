@@ -5,8 +5,8 @@
 #SBATCH --time=00:30:00
 
 #SBATCH --job-name=llama4-scout-gb200
-#SBATCH --output=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/logs/slurm/%j.launch.out
-#SBATCH --error=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/logs/slurm/%j.launch.err
+#SBATCH --output=/tmp/slurm-%j.launch.out
+#SBATCH --error=/tmp/slurm-%j.launch.err
 
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=4
@@ -42,8 +42,6 @@ export PYTHONUNBUFFERED=1
 export ONE_LOGGER_JOB_CATEGORY=test
 export LOGLEVEL=DEBUG
 export TORCHINDUCTOR_WORKER_START=fork
-export TRITON_CACHE_DIR=/home/sbak/experiments//llama4-scout-gb200/triton_cache
-export TORCHINDUCTOR_CACHE_DIR=/home/sbak/experiments//llama4-scout-gb200/inductor_cache
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TORCH_CPP_LOG_LEVEL=INFO
 export TORCH_NCCL_TRACE_BUFFER_SIZE=2000
@@ -56,17 +54,30 @@ export TORCH_DIST_INIT_BARRIER=0
 export TORCH_INCLUDE_STACK_TRACE=0
 export TORCH_INCLUDE_ONLY_ACTIVE=1
 export TORCH_NCCL_EXTRA_DUMP_ON_EXEC=1
-export MEGATRON_REPO_SNAPSHOT_BRANCH=rits-snapshot-a9b0c8d79e
 
+# Fault injection parameters (overridable via sbatch --export or environment)
+export FAULT_AT_ITER="${FAULT_AT_ITER:-5}"
+export FAULT_RANK="${FAULT_RANK:-1}"
+export FAULT_TYPE="${FAULT_TYPE:-GPU_SLEEP}"
 
+# Node / task geometry (SLURM_NNODES is set by SLURM from --nodes override)
+export GPUS_PER_NODE="${GPUS_PER_NODE:-4}"
+TOTAL_TASKS=$((SLURM_NNODES * GPUS_PER_NODE))
 
-mkdir -p /home/sbak/experiments//llama4-scout-gb200/datacache
-mkdir -p /home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/checkpoints
-mkdir -p /home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/tensorboard
+# Per-experiment output directory (overridable via sbatch --export)
+export BASE_EXPERIMENTS_DIR="${BASE_EXPERIMENTS_DIR:-/home/sbak/experiments/llama4-scout-gb200}"
+export EXPERIMENT_DIR="${EXPERIMENT_DIR:-${BASE_EXPERIMENTS_DIR}/fault_injection/manual/n${SLURM_NNODES}_${FAULT_TYPE}_r${FAULT_RANK}_i${FAULT_AT_ITER}}"
+
+export TRITON_CACHE_DIR=${BASE_EXPERIMENTS_DIR}/triton_cache
+export TORCHINDUCTOR_CACHE_DIR=${BASE_EXPERIMENTS_DIR}/inductor_cache
+
+mkdir -p ${BASE_EXPERIMENTS_DIR}/datacache
+mkdir -p ${EXPERIMENT_DIR}/checkpoints
+mkdir -p ${EXPERIMENT_DIR}/tensorboard
 
 : "${SLURM_RESTART_COUNT:=0}"
 
-LOG_DIR=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/logs
+LOG_DIR=${EXPERIMENT_DIR}/logs
 mkdir -p ${LOG_DIR}
 echo "Writing logs to ${LOG_DIR}"
 LOG_FILE_BASE="${LOG_DIR}/slurm/${SLURM_JOB_ID}.${SLURM_RESTART_COUNT}"
@@ -74,12 +85,12 @@ LOG_FILE_BASE="${LOG_DIR}/slurm/${SLURM_JOB_ID}.${SLURM_RESTART_COUNT}"
 # Mounts
 LUSTRE=/home:/home
 SHARED_TMP=/home/sbak/tmp/${SLURM_JOB_ID}:/tmp
-LOGS=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/logs:/logs
+LOGS=${EXPERIMENT_DIR}/logs:/logs
 MEGATRON_REPO=/home/sbak/megatron-lm-main:/megatron-lm_repo
-DATACACHE=/home/sbak/experiments//llama4-scout-gb200/datacache:/datacache
-CHECKPOINT_LOAD=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/checkpoints:/checkpoint-load
-CHECKPOINT_SAVE=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/checkpoints:/checkpoint-save
-TENSORBOARD=/home/sbak/experiments//llama4-scout-gb200/20260408_140621/2/tensorboard:/tensorboard
+DATACACHE=${BASE_EXPERIMENTS_DIR}/datacache:/datacache
+CHECKPOINT_LOAD=${EXPERIMENT_DIR}/checkpoints:/checkpoint-load
+CHECKPOINT_SAVE=${EXPERIMENT_DIR}/checkpoints:/checkpoint-save
+TENSORBOARD=${EXPERIMENT_DIR}/tensorboard:/tensorboard
 WORKSPACE=/home/sbak/tmp:/workspace
 CONTAINER_MOUNTS=$LUSTRE,$SHARED_TMP,$LOGS,$MEGATRON_REPO,$DATACACHE,$CHECKPOINT_LOAD,$CHECKPOINT_SAVE,$TENSORBOARD,$WORKSPACE
 mkdir -p /home/sbak/tmp/${SLURM_JOB_ID}
@@ -99,15 +110,16 @@ srun \
     --error=${LOG_FILE_BASE}.0.all_node_setup.log \
     --output=${LOG_FILE_BASE}.0.all_node_setup.log \
     --ntasks-per-node=1 \
-    --ntasks=2 \
+    --ntasks=${SLURM_NNODES} \
     --kill-on-bad-exit=0 \
     --mpi=none \
     bash -c '
         export MEGATRON_PATH=`mktemp -d`
         echo "export MEGATRON_PATH=$MEGATRON_PATH" >> /tmp/.myenv_${SLURM_JOB_ID}.sh
         pushd $MEGATRON_PATH
-        echo "Cloning Megatron branch $MEGATRON_REPO_SNAPSHOT_BRANCH"
-        git clone --single-branch --branch $MEGATRON_REPO_SNAPSHOT_BRANCH /megatron-lm_repo .
+        CURRENT_BRANCH=$(git -C /megatron-lm_repo branch --show-current)
+        echo "Cloning Megatron branch $CURRENT_BRANCH"
+        git clone --single-branch --branch $CURRENT_BRANCH /megatron-lm_repo .
         popd
     '
 log_msg "END all_node_setup"
@@ -122,8 +134,8 @@ srun \
     --container-workdir / \
     --error=${LOG_FILE_BASE}.1.main_workload.log \
     --output=${LOG_FILE_BASE}.1.main_workload.log \
-    --ntasks-per-node=4 \
-    --ntasks=8 \
+    --ntasks-per-node=${GPUS_PER_NODE} \
+    --ntasks=${TOTAL_TASKS} \
     --kill-on-bad-exit=0 \
     --mpi=none \
     bash -c '
@@ -242,8 +254,9 @@ srun \
             --local-rank ${SLURM_LOCALID} \
             --context-parallel-size 1 \
             --vocab-size 238600 \
-            --megatron-fault-hang-at-iter 5 \
-            --megatron-fault-hang-rank 1 \
+            --megatron-fault-at-iter ${FAULT_AT_ITER} \
+            --megatron-fault-rank ${FAULT_RANK} \
+            --megatron-fault-type ${FAULT_TYPE} \
             --distributed-timeout-seconds-after-init 1 \
             --flight-recorder-dump-path /checkpoint-save \
         "

@@ -23,7 +23,10 @@ from nvidia_resiliency_ext.attribution.base import (
     normalize_attribution_args,
 )
 
-from .capture import capture_logs
+try:
+    from .capture import capture_logs
+except ImportError:
+    from nvidia_resiliency_ext.attribution.trace_analyzer.capture import capture_logs
 
 logger = logging.getLogger(__name__)
 
@@ -1113,7 +1116,7 @@ def main():
         '--fr-path', type=str, help='Path to JSON files or directories containing JSON files'
     )
     parser.add_argument(
-        '-p', '--pattern', default="*.json", help='File pattern to match (default: *.json)'
+        '-p', '--pattern', default="_dump_*", help='File pattern to match (default: _dump_*)'
     )
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')
     parser.add_argument(
@@ -1125,7 +1128,7 @@ def main():
     parser.add_argument(
         '-m',
         '--model',
-        default="nvdev/nvidia/llama-3.3-nemotron-super-49b-v1",
+        default="qwen/qwen3.5-122b-a10b",
         help='Model to use for LLM analysis',
     )
 
